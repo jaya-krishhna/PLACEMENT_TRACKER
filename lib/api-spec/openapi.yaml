@@ -1,0 +1,1655 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Placement Tracker account and application API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Student account operations
+  - name: applications
+    description: Placement application management
+  - name: dashboard
+    description: Dashboard summaries and insights
+  - name: gmail
+    description: Gmail integration and sync operations
+  - name: review
+    description: Review queue for ambiguous or uncertain email events
+  - name: reminders
+    description: Reminders and notifications for upcoming events and required actions
+  - name: calendar
+    description: Calendar events and ICS exports
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create a student account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in to a student account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in student
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out of the current session
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List applications for the signed-in student
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Student applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Application"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Add a company application
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationInput"
+      responses:
+        "201":
+          description: Application created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/export:
+    get:
+      operationId: exportApplications
+      tags: [applications]
+      summary: Download all applications as CSV
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/samples:
+    delete:
+      operationId: deleteSampleApplications
+      tags: [applications]
+      summary: Remove all sample applications from the signed-in student's account
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Sample applications removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Get one application
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+    patch:
+      operationId: updateApplication
+      tags: [applications]
+      summary: Update one application
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationUpdate"
+      responses:
+        "200":
+          description: Application updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteApplication
+      tags: [applications]
+      summary: Delete one application
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Application deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/{id}/timeline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getApplicationTimeline
+      tags: [applications]
+      summary: Get timeline events for an application
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationTimelineEvent"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/{id}/events/{eventId}/undo:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: undoApplicationEvent
+      tags: [applications]
+      summary: Undo the latest application event
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Event undone successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get status totals, rejection rounds, and upcoming deadlines
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/status:
+    get:
+      operationId: getGmailStatus
+      tags: [gmail]
+      summary: Get Gmail integration status
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Gmail status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailStatusResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/connect:
+    get:
+      operationId: getGmailConnectUrl
+      tags: [gmail]
+      summary: Get Google OAuth authorization URL
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailConnectResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/callback:
+    get:
+      operationId: handleGmailCallback
+      tags: [gmail]
+      summary: OAuth callback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to settings
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/connection:
+    delete:
+      operationId: disconnectGmail
+      tags: [gmail]
+      summary: Disconnect Gmail and revoke tokens
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: deleteEmailData
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Disconnected successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/labels:
+    get:
+      operationId: getGmailLabels
+      tags: [gmail]
+      summary: List user Gmail labels
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: List of labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GmailLabel"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/label:
+    put:
+      operationId: updateGmailLabel
+      tags: [gmail]
+      summary: Set monitored Gmail label
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGmailLabelInput"
+      responses:
+        "200":
+          description: Label updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailLabelUpdatedResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/senders:
+    get:
+      operationId: getGmailSenders
+      tags: [gmail]
+      summary: List sender rules
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, excluded]
+      responses:
+        "200":
+          description: List of sender rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SenderRule"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: createGmailSender
+      tags: [gmail]
+      summary: Manually add a sender rule
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSenderRuleInput"
+      responses:
+        "201":
+          description: Sender rule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SenderRule"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/senders/{id}:
+    patch:
+      operationId: updateGmailSender
+      tags: [gmail]
+      summary: Update sender rule status
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSenderRuleInput"
+      responses:
+        "200":
+          description: Sender rule updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SenderRule"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/sync:
+    post:
+      operationId: syncGmail
+      tags: [gmail]
+      summary: Trigger manual sync
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Sync results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailSyncResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/process:
+    post:
+      operationId: processGmailEmails
+      tags: [gmail]
+      summary: Trigger manual processing and extraction of queued emails
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GmailProcessInput"
+      responses:
+        "200":
+          description: Processing summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailProcessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/events:
+    get:
+      operationId: getGmailEvents
+      tags: [gmail]
+      summary: List email events with optional status filter and pagination
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of email events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailEventsResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/events/{id}/reprocess:
+    post:
+      operationId: reprocessGmailEvent
+      tags: [gmail]
+      summary: Re-queue one email event for reprocessing
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reprocessed email event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailEventItem"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /gmail/apply:
+    post:
+      operationId: applyGmailEmails
+      tags: [gmail]
+      summary: Apply extracted emails to applications
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Apply summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailApplyResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /review:
+    get:
+      operationId: getReviewQueue
+      tags: [review]
+      summary: Get items in the review queue
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: List of items requiring review
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewQueueItem"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /review/{emailEventId}/resolve:
+    parameters:
+      - name: emailEventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: resolveReviewItem
+      tags: [review]
+      summary: Resolve a review item by linking, creating, or dismissing
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveReviewInput"
+      responses:
+        "200":
+          description: Review item resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /reminders:
+    get:
+      operationId: getReminders
+      tags: [reminders]
+      summary: Get active reminders
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: List of active reminders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemindersResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /reminders/dismiss:
+    post:
+      operationId: dismissReminder
+      tags: [reminders]
+      summary: Dismiss a single reminder
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DismissReminderInput"
+      responses:
+        "200":
+          description: Reminder dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /reminders/dismiss-all:
+    post:
+      operationId: dismissAllReminders
+      tags: [reminders]
+      summary: Dismiss all active reminders
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: All reminders dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissAllRemindersResult"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /calendar/events:
+    get:
+      operationId: getCalendarEvents
+      tags: [calendar]
+      summary: Get calendar events in a date range
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of calendar events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEventItem"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /calendar/export.ics:
+    get:
+      operationId: exportCalendarIcs
+      tags: [calendar]
+      summary: Export all upcoming calendar events as ICS
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Calendar ICS file
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+  /applications/{id}/event.ics:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: exportApplicationEventIcs
+      tags: [calendar]
+      summary: Export single application event as ICS
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Event ICS file
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: placement_session
+  responses:
+    ErrorResponse:
+      description: Request error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+    User:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+    RegisterInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+    ApplicationStatus:
+      type: string
+      enum: [APPLIED, SCREENING, TEST, INTERVIEW, ACCEPTED, REJECTED, WITHDRAWN]
+    ApplicationMode:
+      type: string
+      enum: [On-campus, Off-campus, Referral, "Job portal", Unknown]
+    RejectionRound:
+      type: string
+      enum:
+        - Resume shortlisting
+        - Aptitude/online test
+        - Coding round
+        - Technical interview
+        - HR interview
+        - Other
+    Application:
+      type: object
+      required:
+        - id
+        - companyName
+        - appliedDate
+        - mode
+        - status
+        - isSample
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        role:
+          type: ["string", "null"]
+        packageLpa:
+          type: ["number", "null"]
+        location:
+          type: ["string", "null"]
+        appliedDate:
+          type: string
+          format: date
+        mode:
+          $ref: "#/components/schemas/ApplicationMode"
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        nextDate:
+          type: ["string", "null"]
+          format: date
+        contactName:
+          type: ["string", "null"]
+        contactEmailOrPhone:
+          type: ["string", "null"]
+        jobLink:
+          type: ["string", "null"]
+          format: uri
+        notes:
+          type: ["string", "null"]
+        rejectionRound:
+          oneOf:
+            - $ref: "#/components/schemas/RejectionRound"
+            - type: "null"
+        rejectionDate:
+          type: ["string", "null"]
+          format: date
+        rejectionReason:
+          type: ["string", "null"]
+        stageDetail:
+          type: ["string", "null"]
+        source:
+          type: string
+          enum: [manual, email]
+        lastEmailAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAtHasTime:
+          type: boolean
+        nextType:
+          type: ["string", "null"]
+        actionRequired:
+          type: boolean
+        actionNote:
+          type: ["string", "null"]
+        isSample:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ApplicationInput:
+      type: object
+      required: [companyName, appliedDate, mode, status]
+      properties:
+        companyName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        role:
+          type: ["string", "null"]
+          maxLength: 160
+        packageLpa:
+          type: ["number", "null"]
+          minimum: 0
+          maximum: 1000
+        location:
+          type: ["string", "null"]
+          maxLength: 160
+        appliedDate:
+          type: string
+          format: date
+        mode:
+          $ref: "#/components/schemas/ApplicationMode"
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        nextDate:
+          type: ["string", "null"]
+          format: date
+        contactName:
+          type: ["string", "null"]
+          maxLength: 160
+        contactEmailOrPhone:
+          type: ["string", "null"]
+          maxLength: 254
+        jobLink:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2048
+        notes:
+          type: ["string", "null"]
+          maxLength: 10000
+        rejectionRound:
+          oneOf:
+            - $ref: "#/components/schemas/RejectionRound"
+            - type: "null"
+        rejectionDate:
+          type: ["string", "null"]
+          format: date
+        rejectionReason:
+          type: ["string", "null"]
+          maxLength: 5000
+        stageDetail:
+          type: ["string", "null"]
+        source:
+          type: string
+          enum: [manual, email]
+        lastEmailAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAtHasTime:
+          type: boolean
+        nextType:
+          type: ["string", "null"]
+        actionRequired:
+          type: boolean
+        actionNote:
+          type: ["string", "null"]
+    ApplicationUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        companyName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        role:
+          type: ["string", "null"]
+          maxLength: 160
+        packageLpa:
+          type: ["number", "null"]
+          minimum: 0
+          maximum: 1000
+        location:
+          type: ["string", "null"]
+          maxLength: 160
+        appliedDate:
+          type: string
+          format: date
+        mode:
+          $ref: "#/components/schemas/ApplicationMode"
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        nextDate:
+          type: ["string", "null"]
+          format: date
+        contactName:
+          type: ["string", "null"]
+          maxLength: 160
+        contactEmailOrPhone:
+          type: ["string", "null"]
+          maxLength: 254
+        jobLink:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2048
+        notes:
+          type: ["string", "null"]
+          maxLength: 10000
+        rejectionRound:
+          oneOf:
+            - $ref: "#/components/schemas/RejectionRound"
+            - type: "null"
+        rejectionDate:
+          type: ["string", "null"]
+          format: date
+        rejectionReason:
+          type: ["string", "null"]
+          maxLength: 5000
+        stageDetail:
+          type: ["string", "null"]
+        source:
+          type: string
+          enum: [manual, email]
+        lastEmailAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAtHasTime:
+          type: boolean
+        nextType:
+          type: ["string", "null"]
+        actionRequired:
+          type: boolean
+        actionNote:
+          type: ["string", "null"]
+    RejectionCount:
+      type: object
+      required: [round, count]
+      properties:
+        round:
+          $ref: "#/components/schemas/RejectionRound"
+        count:
+          type: integer
+    DashboardSummary:
+      type: object
+      required:
+        - total
+        - counts
+        - rejectionRounds
+        - upcomingDeadlines
+      properties:
+        total:
+          type: integer
+        counts:
+          type: object
+          required: [APPLIED, SCREENING, TEST, INTERVIEW, ACCEPTED, REJECTED, WITHDRAWN]
+          properties:
+            APPLIED:
+              type: integer
+            SCREENING:
+              type: integer
+            TEST:
+              type: integer
+            INTERVIEW:
+              type: integer
+            ACCEPTED:
+              type: integer
+            REJECTED:
+              type: integer
+            WITHDRAWN:
+              type: integer
+        rejectionRounds:
+          type: array
+          items:
+            $ref: "#/components/schemas/RejectionCount"
+        upcomingDeadlines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Application"
+    GmailConnectResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+    GmailLabel:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+    UpdateGmailLabelInput:
+      type: object
+      required: [labelId]
+      properties:
+        labelId:
+          type: string
+        label_id:
+          type: string
+    GmailLabelUpdatedResponse:
+      type: object
+      required: [success, labelId, labelName]
+      properties:
+        success:
+          type: boolean
+        labelId:
+          type: string
+        labelName:
+          type: string
+    SenderRule:
+      type: object
+      required: [id, userId, kind, value, status, source, messageCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [address, domain]
+        value:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, excluded]
+        source:
+          type: string
+          enum: [detected, manual]
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateSenderRuleInput:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [address, domain]
+        value:
+          type: string
+    UpdateSenderRuleInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, excluded]
+    SenderCounts:
+      type: object
+      required: [pending, approved, excluded]
+      properties:
+        pending:
+          type: integer
+        approved:
+          type: integer
+        excluded:
+          type: integer
+    EmailEventCounts:
+      type: object
+      required: [pending_sender, queued, ignored]
+      properties:
+        pending_sender:
+          type: integer
+        queued:
+          type: integer
+        processing:
+          type: integer
+        extracted:
+          type: integer
+        applied:
+          type: integer
+        needs_review:
+          type: integer
+        ignored:
+          type: integer
+        failed:
+          type: integer
+    GmailStatusResponse:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        googleEmail:
+          type: ["string", "null"]
+        google_email:
+          type: ["string", "null"]
+        label:
+          oneOf:
+            - $ref: "#/components/schemas/GmailLabel"
+            - type: "null"
+        lastSyncedAt:
+          type: ["string", "null"]
+          format: date-time
+        last_synced_at:
+          type: ["string", "null"]
+          format: date-time
+        accountStatus:
+          type: ["string", "null"]
+          enum: [active, needs_reconnect]
+        senderCounts:
+          $ref: "#/components/schemas/SenderCounts"
+        emailEventCounts:
+          $ref: "#/components/schemas/EmailEventCounts"
+    GmailSyncResponse:
+      type: object
+      required: [queued, pendingSender, ignored]
+      properties:
+        newMessages:
+          type: integer
+        new:
+          type: integer
+        queued:
+          type: integer
+        pendingSender:
+          type: integer
+        pending_sender:
+          type: integer
+        ignored:
+          type: integer
+    GmailProcessInput:
+      type: object
+      properties:
+        limit:
+          type: integer
+    GmailProcessResponse:
+      type: object
+      required: [extracted, ignored, failed, remaining]
+      properties:
+        extracted:
+          type: integer
+        ignored:
+          type: integer
+        failed:
+          type: integer
+        remaining:
+          type: integer
+        rateLimited:
+          type: boolean
+    EmailEventItem:
+      type: object
+      required: [id, gmailMessageId, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        gmailMessageId:
+          type: string
+        threadId:
+          type: ["string", "null"]
+        fromAddress:
+          type: ["string", "null"]
+        fromDomain:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        receivedAt:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+        confidence:
+          type: ["string", "null"]
+        aiResult:
+          type: ["object", "null"]
+        error:
+          type: ["string", "null"]
+        retryCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    GmailEventsResponse:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailEventItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+    ApplicationTimelineEvent:
+      type: object
+      required:
+        - id
+        - applicationId
+        - kind
+        - occurredAt
+        - appliedBy
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        applicationId:
+          type: string
+          format: uuid
+        emailEventId:
+          type: ["string", "null"]
+          format: uuid
+        kind:
+          type: string
+          enum: [created, updated, historical, undone]
+        occurredAt:
+          type: string
+          format: date-time
+        fromStatus:
+          type: ["string", "null"]
+        toStatus:
+          type: ["string", "null"]
+        stageDetail:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        appliedBy:
+          type: string
+          enum: [auto, review]
+        undoneAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    GmailApplyResponse:
+      type: object
+      required: [applied, created, updated, historical, needsReview]
+      properties:
+        applied:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        historical:
+          type: integer
+        needsReview:
+          type: integer
+    CandidateApplication:
+      type: object
+      required: [id, companyName, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        role:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        stageDetail:
+          type: ["string", "null"]
+        appliedDate:
+          type: string
+          format: date
+    ReviewQueueItem:
+      type: object
+      required:
+        - id
+        - gmailMessageId
+        - reviewReason
+      properties:
+        id:
+          type: string
+          format: uuid
+        gmailMessageId:
+          type: string
+        threadId:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        from:
+          type: ["string", "null"]
+        fromDomain:
+          type: ["string", "null"]
+        receivedAt:
+          type: ["string", "null"]
+          format: date-time
+        reviewReason:
+          type: string
+        summary:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        role:
+          type: ["string", "null"]
+        suggestedStatus:
+          type: ["string", "null"]
+        stageDetail:
+          type: ["string", "null"]
+        nextAt:
+          type: ["string", "null"]
+          format: date-time
+        nextAtHasTime:
+          type: boolean
+        actionRequired:
+          type: boolean
+        actionNote:
+          type: ["string", "null"]
+        candidateApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateApplication"
+    ResolveReviewInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [link, create, dismiss]
+        applicationId:
+          type: string
+          format: uuid
+    ReminderItem:
+      type: object
+      required:
+        - key
+        - kind
+        - severity
+        - title
+        - body
+        - hasTime
+        - dueAt
+      properties:
+        key:
+          type: string
+        kind:
+          type: string
+        severity:
+          type: string
+          enum: [urgent, soon, info]
+        title:
+          type: string
+        body:
+          type: string
+        eventAt:
+          type: ["string", "null"]
+          format: date-time
+        hasTime:
+          type: boolean
+        dueAt:
+          type: string
+          format: date-time
+        applicationId:
+          type: ["string", "null"]
+          format: uuid
+        company:
+          type: ["string", "null"]
+        role:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+    RemindersResponse:
+      type: object
+      required:
+        - now
+        - items
+        - count
+      properties:
+        now:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReminderItem"
+        count:
+          type: integer
+    DismissReminderInput:
+      type: object
+      required:
+        - key
+      properties:
+        key:
+          type: string
+    DismissAllRemindersResult:
+      type: object
+      required:
+        - success
+        - count
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+    CalendarEventItem:
+      type: object
+      required:
+        - id
+        - applicationId
+        - title
+        - kind
+        - start
+        - allDay
+        - company
+        - status
+        - actionRequired
+        - source
+        - isPast
+      properties:
+        id:
+          type: string
+        applicationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        kind:
+          type: string
+          enum: [interview, assessment, screening, deadline]
+        start:
+          type: string
+        end:
+          type: ["string", "null"]
+        allDay:
+          type: boolean
+        company:
+          type: string
+        role:
+          type: ["string", "null"]
+        status:
+          type: string
+        stageDetail:
+          type: ["string", "null"]
+        actionRequired:
+          type: boolean
+        actionNote:
+          type: ["string", "null"]
+        source:
+          type: string
+          enum: [manual, email]
+        summary:
+          type: ["string", "null"]
+        isPast:
+          type: boolean

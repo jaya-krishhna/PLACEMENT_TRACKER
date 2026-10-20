@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Placement Tracker"
+description = "A private job-application tracker for students to manage placement applications, interview stages, deadlines, rejections, and exportable records."
+version = "1.0.0"
+id = "artifacts/placement-tracker"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23301
+
+[services.development]
+run = "pnpm --filter @workspace/placement-tracker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/placement-tracker", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/placement-tracker/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23301"
+BASE_PATH = "/"
